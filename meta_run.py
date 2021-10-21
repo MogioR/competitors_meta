@@ -33,7 +33,5 @@ if os.getenv("GOOGLE_API_TOKEN") is not None:
     with open(config['GoogleSheets']['token'], 'w') as f:
         f.write(os.getenv("GOOGLE_API_TOKEN"))
 
-
 service = MetaService(config)
 service.make_report(type=OUTPUT_TYPE)
-del service

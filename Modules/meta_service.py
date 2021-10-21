@@ -1,21 +1,19 @@
 import math
 import re
 import json
-import numpy as np
-import lxml
-
 from datetime import date
 from concurrent.futures.thread import ThreadPoolExecutor
 
+import numpy as np
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from Modules.Logger.logger import get_logger
-from Modules.google_xml_river import GoogleXmlRiver
-from Modules.yandex_xml_river import YandexXmlRiver
+from Modules.Xml_river import GoogleXmlRiver
+from Modules.Xml_river import YandexXmlRiver
 from Modules.natasha_tokenizer import NatashaTokenizer
-from Modules.Selenium_scraper import BrowserPoolWebpageDetails
 from Modules.google_sheets_api import GoogleSheetsApi
+from Modules.request_scraper import RequestsScraper
 
 logger = get_logger(__name__)
 
@@ -53,14 +51,10 @@ class MetaService:
         self.google_document_out_id = config['GoogleSheets']['document_out_id']
 
         self.tokenizer = NatashaTokenizer()
-        try:
-            self.browser_pool = BrowserPoolWebpageDetails(BROWSER_POOL_SIZE)
-        except Exception as e:
-            logger.error(e)
-            self.browser_pool.close_all()
+        self.parser = RequestsScraper()
 
     def __del__(self):
-        self.browser_pool.close_all()
+        pass
 
     # Return xml_report from query
     def get_xml_report(self, query):
@@ -92,7 +86,7 @@ class MetaService:
         results = []
         try:
             with ThreadPoolExecutor(BROWSER_POOL_SIZE) as executor:
-                for current_progress, result in enumerate(executor.map(self.browser_pool.get_webpage_details, urls)):
+                for current_progress, result in enumerate(executor.map(self.parser.get_page_details, urls)):
                     results.append(result)
                     logger.info("Received source of: {0}".format(urls[current_progress]))
 
@@ -172,7 +166,7 @@ class MetaService:
 
     # Return site H1
     def get_h1_by_url(self, url):
-        return self.browser_pool.get_webpage_details(url)
+        return self.parser.get_page_details(url)
 
     # Make report
     def make_report(self, type='GOOGLE'):
@@ -205,12 +199,12 @@ class MetaService:
                 urls = self.get_urls_by_get_xml_report(results)
                 urls = list(filter(lambda x: x.find('redsale.by') == -1, urls))
                 titles, descriptions = self.get_meta_by_urls(urls)
-                if len(urls) < self.min_urls:
+                if len(urls) >= self.min_urls:
                     export_list.append(self.get_export_query_item(query, urls, titles, descriptions))
             else:
                 red_sale_site = self.get_h1_by_url(query)
                 if len(red_sale_site.h1) != 0:
-
+                    red_sale_site.h1 = red_sale_site.h1.strip()
                     try:
                         results = self.get_xml_report(red_sale_site.h1)
                     except Exception as e:
@@ -221,7 +215,7 @@ class MetaService:
                     urls = self.get_urls_by_get_xml_report(results)
                     urls = list(filter(lambda x: x.find('redsale.by') == -1, urls))
                     titles, descriptions = self.get_meta_by_urls(urls)
-                    if len(urls) < self.min_urls:
+                    if len(urls) >= self.min_urls:
                         export_list.append(self.get_export_query_item(red_sale_site.h1, urls, titles, descriptions,
                                                                       red_sale_site.url, red_sale_site.title,
                                                                       red_sale_site.description))

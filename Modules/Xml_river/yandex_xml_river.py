@@ -1,6 +1,4 @@
-import requests
-
-from Modules.xml_river import XmlRiver
+from Modules.Xml_river.xml_river import XmlRiver
 
 
 class YandexXmlRiver(XmlRiver):

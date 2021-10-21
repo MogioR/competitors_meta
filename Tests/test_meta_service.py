@@ -3,10 +3,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from Modules.meta_service import MetaService
-from Modules.google_xml_river import GoogleXmlRiver
-from Modules.yandex_xml_river import YandexXmlRiver
+from Modules.Xml_river import GoogleXmlRiver
+from Modules.Xml_river import YandexXmlRiver
 from Modules.natasha_tokenizer import NatashaTokenizer
-from Modules.Selenium_scraper import BrowserPoolWebpageDetails
 
 CONFIGS = [
 {
@@ -116,7 +115,6 @@ def test_competitors_meta_service():
         assert service.google_in_sheet == config['GoogleSheets']['input_sheet_name']
 
         assert type(service.tokenizer) is NatashaTokenizer
-        assert type(service.browser_pool) is BrowserPoolWebpageDetails
 
         del service
 
@@ -125,10 +123,6 @@ class TestCompetitorsMetaService:
     @classmethod
     def setup_class(cls):
         cls.test_service = MetaService(CONFIGS[0])
-
-    @classmethod
-    def teardown_class(cls):
-        del cls.test_service
 
     def test_get_urls_by_get_xml_report(self):
         xml_report = '<?xml version="1.0"><yandexsearch version="1.0"><response date="20211014T173320">' \

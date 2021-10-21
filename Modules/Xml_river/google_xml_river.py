@@ -1,4 +1,4 @@
-from Modules.xml_river import XmlRiver
+from Modules.Xml_river.xml_river import XmlRiver
 
 
 class GoogleXmlRiver(XmlRiver):
