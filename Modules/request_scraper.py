@@ -5,10 +5,16 @@ from bs4 import BeautifulSoup
 
 from Modules.Logger.logger import get_logger
 
+import sys
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
+
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) '
                          'Chrome/41.0.2228.0 Safari/537.3'}
 
 logger = get_logger(__name__)
+
 
 class WebpageDetails:
     def __init__(self, title, description, url, h1):
@@ -24,20 +30,24 @@ class RequestsScraper:
     def open_page(url: str):
         for attempt in range(2):
             logger.info(f'Trying to open {url}')
-            response = requests.get(url, headers=headers, timeout=40)
+            response = requests.get(url, headers=headers, timeout=40, verify=False)
             logger.info("Status code response " + str(response.status_code))
             if response.status_code == 200:
                 return response.text
             sleep(2)
 
-        logger.error("Too many attempts to load " + url)
         raise Exception('Can not load site: ' + url)
 
     # Get WebpageDetails by url
     @staticmethod
     def get_page_details(url: str):
-        page = RequestsScraper.open_page(url)
-        soup = BeautifulSoup(page, "html.parser")
+        try:
+            page = RequestsScraper.open_page(url)
+            soup = BeautifulSoup(page, "html.parser")
+
+        except Exception as e:
+            logger.error(str(e))
+            return WebpageDetails('', '', url, '')
 
         # Get h1
         h1 = soup.find('h1', {'class': 'page-title-big'})
@@ -47,7 +57,7 @@ class RequestsScraper:
             h1_str = h1.string
 
         # Get title
-        title = soup.find('title').string
+        title = soup.find('title')
         if title is None:
             title_str = ''
         else:
