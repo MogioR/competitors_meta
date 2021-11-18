@@ -74,10 +74,26 @@ class MetaService:
 
     # Return urls from xml_report
     @staticmethod
-    def get_urls_by_get_xml_report(xml_report):
+    def get_content_by_get_xml_report(xml_report):
         soup = BeautifulSoup(xml_report, "html.parser")
-        urls = [_.string for _ in soup.findAll('url')]
-        return urls
+        docs = soup.findAll('doc')
+
+        query_urls = []
+        query_titles = []
+        query_descriptions = []
+
+        for doc in docs:
+            query_urls.append(doc.url.text)
+            title = doc.title.text.replace('![CDATA[', '')
+            title = title.replace(']]', '')
+            title = title.replace('\xa0', '')
+            query_titles.append(title)
+            desc = doc.passages.passage.text.replace('![CDATA[', '')
+            desc = desc.replace(']]', '')
+            desc = desc.replace('\xa0', '')
+            query_descriptions.append(desc)
+
+        return query_urls, query_titles, query_descriptions
 
     # Return titles and descriptions from urls
     def get_meta_by_urls(self, urls):
@@ -100,23 +116,29 @@ class MetaService:
         return titles, descriptions
 
     # Return url item for export
-    def get_export_url_item(self, url: str, title: str, description: str):
-        return {'url': url, 'title': title, 'description': description, 'hint_title': self.get_hints(title),
-                'hint_desc': self.get_hints(description)}
+    def get_export_url_item(self, url: str, title: str, description: str, query_title: str, query_description: str):
+        return {'url': url, 'title': title, 'description': description,
+                'query_title': query_title, 'query_desc': query_description, 'hint_title': self.get_hints(title),
+                'hint_desc': self.get_hints(description), 'hint_query_title': self.get_hints(query_title),
+                'hint_query_desc': self.get_hints(query_description)}
 
     # Return query item for export
     def get_export_query_item(self, query: str, urls: list, titles: list, descriptions: list,
-                              query_url='', query_title='', query_description=''):
+                              query_titles: list, query_descriptions: list,
+                              url='', title='', description='', query_title='', query_description=''):
         # Gen url items
         export_url_items = []
         for i in range(len(urls)):
-            export_url_items.append(self.get_export_url_item(urls[i], titles[i], descriptions[i]))
+            export_url_items.append(self.get_export_url_item(urls[i], titles[i], descriptions[i], query_titles[i],
+                                                             query_descriptions[i]))
 
         # Gen hints
-        hint_title, hint_desc = self.make_query_hints(export_url_items)
-        return {'query': query, 'search_engine': self.searchEngineType, 'query_url': query_url,
-                'query_title': query_title, 'query_description': query_description, 'urls': export_url_items,
-                'hint_title': hint_title, 'hint_desc': hint_desc}
+        hint_title, hint_desc, hint_query_title, hint_query_desc = self.make_query_hints(export_url_items)
+        return {'query': query, 'search_engine': self.searchEngineType, 'url': url,
+                'title': title, 'description': description, 'query_title': query_title,
+                'query_description': query_description, 'urls': export_url_items,
+                'hint_title': hint_title, 'hint_desc': hint_desc, 'hint_query_title': hint_query_title,
+                'hint_query_desc': hint_query_desc}
 
     # Return hints by data string
     def get_hints(self, data: str):
@@ -148,21 +170,30 @@ class MetaService:
     def make_query_hints(export_url_items):
         descriptions_hints_list = []
         titles_hints_list = []
-
+        query_descriptions_hints_list = []
+        query_titles_hints_list = []
         for item in export_url_items:
             descriptions_hints_list.append(item['hint_desc'])
             titles_hints_list.append(item['hint_title'])
+            query_descriptions_hints_list.append(item['hint_query_desc'])
+            query_titles_hints_list.append(item['hint_query_title'])
 
         descriptions_hints = MetaService.sum_hints(descriptions_hints_list)
         titles_hints = MetaService.sum_hints(titles_hints_list)
+        query_descriptions_hints = MetaService.sum_hints(query_descriptions_hints_list)
+        query_titles_hints = MetaService.sum_hints(query_titles_hints_list)
 
         descriptions_hints = {key: int(val) for key, val in descriptions_hints.items() if val > 1}
         titles_hints = {key: int(val) for key, val in titles_hints.items() if val > 1}
+        query_descriptions_hints = {key: int(val) for key, val in query_descriptions_hints.items() if val > 1}
+        query_titles_hints = {key: int(val) for key, val in query_titles_hints.items() if val > 1}
 
         sorted_descriptions_hints = dict(sorted(descriptions_hints.items(), key=lambda x: x[1], reverse=True))
         sorted_titles_hints = dict(sorted(titles_hints.items(), key=lambda x: x[1], reverse=True))
+        query_descriptions_hints = dict(sorted(query_descriptions_hints.items(), key=lambda x: x[1], reverse=True))
+        query_titles_hints = dict(sorted(query_titles_hints.items(), key=lambda x: x[1], reverse=True))
 
-        return sorted_titles_hints, sorted_descriptions_hints
+        return sorted_titles_hints, sorted_descriptions_hints, query_titles_hints, query_descriptions_hints
 
     # Return site H1
     def get_h1_by_url(self, url):
@@ -196,11 +227,22 @@ class MetaService:
                     print('Stopped in: ', i, ' Query is ', query)
                     break
 
-                urls = self.get_urls_by_get_xml_report(results)
-                urls = list(filter(lambda x: x.find('redsale.by') == -1, urls))
-                titles, descriptions = self.get_meta_by_urls(urls)
-                if len(urls) >= self.min_urls:
-                    export_list.append(self.get_export_query_item(query, urls, titles, descriptions))
+                urls, query_titles, query_descriptions = self.get_content_by_get_xml_report(results)
+
+                # Del urls with red_sale
+                urls_new = []
+                query_titles_new = []
+                query_descriptions_new = []
+                for i in range(len(urls)):
+                    if urls[i].find('redsale.by') == -1:
+                        urls_new.append(urls[i])
+                        query_titles_new.append(query_titles[i])
+                        query_descriptions_new.append(query_descriptions[i])
+
+                titles, descriptions = self.get_meta_by_urls(urls_new)
+                if len(urls_new) >= self.min_urls:
+                    export_list.append(self.get_export_query_item(query, urls_new, titles, descriptions,
+                                                                  query_titles_new, query_descriptions_new))
             else:
                 red_sale_site = self.get_h1_by_url(query)
                 if len(red_sale_site.h1) != 0:
@@ -212,13 +254,33 @@ class MetaService:
                         print('Stopped in: ', i, ' Query is ', red_sale_site.h1)
                         break
 
-                    urls = self.get_urls_by_get_xml_report(results)
-                    urls = list(filter(lambda x: x.find('redsale.by') == -1, urls))
-                    titles, descriptions = self.get_meta_by_urls(urls)
-                    if len(urls) >= self.min_urls:
-                        export_list.append(self.get_export_query_item(red_sale_site.h1, urls, titles, descriptions,
+                    urls, query_titles, query_descriptions = self.get_content_by_get_xml_report(results)
+
+                    # Del urls with red_sale
+                    redsale_query_title = ''
+                    redsale_query_desc = ''
+
+                    urls_new = []
+                    query_titles_new = []
+                    query_descriptions_new = []
+                    for i in range(len(urls)):
+                        if urls[i].find('redsale.by') == -1:
+                            urls_new.append(urls[i])
+                            query_titles_new.append(query_titles[i])
+                            query_descriptions_new.append(query_descriptions[i])
+                        elif urls[i] == query:
+                            redsale_query_title = query_titles[i]
+                            redsale_query_desc = query_descriptions[i]
+
+                            # redsale_query_title = re.sub(r' –[A-Za-z. ]{0,}$', '', query_titles[i])
+
+                    titles, descriptions = self.get_meta_by_urls(urls_new)
+                    if len(urls_new) >= self.min_urls:
+                        export_list.append(self.get_export_query_item(red_sale_site.h1, urls_new, titles, descriptions,
+                                                                      query_titles_new, query_descriptions_new,
                                                                       red_sale_site.url, red_sale_site.title,
-                                                                      red_sale_site.description))
+                                                                      red_sale_site.description, redsale_query_title,
+                                                                      redsale_query_desc))
                 else:
                     print('Bad url: ', query)
 
@@ -244,7 +306,8 @@ class MetaService:
             json.dump(export_list, f, ensure_ascii=False, cls=NpEncoder)
 
     # Get str hints, with self.tolerance_hint
-    def get_str_hints(self, hints: dict, tolerance: int):
+    @staticmethod
+    def get_str_hints(hints: dict, tolerance: int):
         hints = {key: int(val) for key, val in hints.items() if val > tolerance}
         return ', '.join(hints.keys())
 
@@ -277,9 +340,10 @@ class MetaService:
 
         sheets = GoogleSheetsApi(self.google_token)
 
-        header = [
-            'domain+path', 'name', 'title', 'title_len', 'description', 'desc_len', 'title_hints',
-            'desc_hints', 'all_title_hints', 'all_desc_hints'
+        header_new = [
+            'domain+path', 'name', 'title', 'title_len', 'compare_title', 'description', 'desc_len', 'compare_disc',
+            'query_title_hints', 'query_desc_hints', 'title_hints', 'desc_hints', 'all_query_title_hints',
+            'all_query_desc_hints', 'all_title_hints', 'all_desc_hints'
         ]
 
         data = []
@@ -290,32 +354,46 @@ class MetaService:
             all_description_hints_str = self.get_str_hints(query['hint_desc'],
                                                            math.ceil(len(query['urls']) * self.tolerance_hint_desc))
 
-            title_unique_hints = self.delete_not_unique_hints(query['hint_title'], query['query_title'])
-            desc_unique_hints = self.delete_not_unique_hints(query['hint_desc'], query['query_description'])
+            all_query_title_hints_str = self.get_str_hints(query['hint_query_title'],
+                                                           math.ceil(len(query['urls']) * self.tolerance_hint_title))
+            all_query_description_hints_str = self.get_str_hints(query['hint_query_desc'],
+                                                           math.ceil(len(query['urls']) * self.tolerance_hint_desc))
+
+            title_unique_hints = self.delete_not_unique_hints(query['hint_title'], query['title'])
+            desc_unique_hints = self.delete_not_unique_hints(query['hint_desc'], query['description'])
+            query_title_unique_hints = self.delete_not_unique_hints(query['hint_query_title'], query['title'])
+            query_esc_unique_hints = self.delete_not_unique_hints(query['hint_query_desc'], query['description'])
 
             title_unique_hints_str = self.get_str_hints(title_unique_hints, self.tolerance_hint_title)
             desc_unique_hints_str = self.get_str_hints(desc_unique_hints, self.tolerance_hint_desc)
+            query_title_unique_hints_str = self.get_str_hints(query_title_unique_hints, self.tolerance_hint_title)
+            query_desc_unique_hints_str = self.get_str_hints(query_esc_unique_hints, self.tolerance_hint_desc)
 
-            if query['query_url'] == '':
-                data.append([query['query_url'], query['query'], query['query_title'], '=LEN(C' + str(row) + ')',
-                             query['query_description'], '=LEN(E' + str(row) + ')', title_unique_hints_str,
-                             desc_unique_hints_str, '', ''])
+            if query['url'] == '':
+                data.append([query['url'], query['query'], query['title'], '=LEN(C' + str(row) + ')',
+                             '', query['description'], '=LEN(F' + str(row) + ')', '',
+                             query_title_unique_hints_str, query_desc_unique_hints_str, title_unique_hints_str,
+                             desc_unique_hints_str, '', '', '', ''])
             else:
-                data.append([query['query_url'], query['query'], query['query_title'], '=LEN(C' + str(row) + ')',
-                             query['query_description'], '=LEN(E' + str(row) + ')', title_unique_hints_str,
-                             desc_unique_hints_str, all_title_hints_str, all_description_hints_str])
+                data.append([query['url'], query['query'], query['title'], '=LEN(C' + str(row) + ')',
+                             str(query['title'] == query['query_title']), query['description'],
+                             '=LEN(F' + str(row) + ')',
+                             str(query['description'][:100] == query['query_description'][:100]),
+                             query_title_unique_hints_str, query_desc_unique_hints_str, title_unique_hints_str,
+                             desc_unique_hints_str, all_query_title_hints_str, all_query_description_hints_str,
+                             all_title_hints_str, all_description_hints_str])
             row += 1
         try:
-            sheets.create_sheet(self.google_document_out_id, name_of_sheet, 2 + len(data), 12)
+            sheets.create_sheet(self.google_document_out_id, name_of_sheet, 1 + len(data), len(header_new))
             logger.info("Created new sheet with name: " + name_of_sheet)
         except:
             logger.info("Sheet " + name_of_sheet + " already created, recreate")
             sheets.delete_sheet(self.google_document_out_id, name_of_sheet)
-            sheets.create_sheet(self.google_document_out_id, name_of_sheet, 2 + len(data), 12)
+            sheets.create_sheet(self.google_document_out_id, name_of_sheet, 1 + len(data), len(header_new))
 
-        sheets.put_row_to_sheets(self.google_document_out_id, name_of_sheet, '1', 'A', header)
+        sheets.put_row_to_sheets(self.google_document_out_id, name_of_sheet, 1, 'A', header_new)
         sheets.put_data_to_sheets(self.google_document_out_id, name_of_sheet,
-                                  'A2', 'J' + str(2 + len(data)), 'ROWS', data)
+                                  'A2', 'P' + str(2 + len(data)), 'ROWS', data)
 
         # Title len rules
         sheets.add_colorizing_conditional_formatting(self.google_document_out_id, name_of_sheet,
@@ -324,6 +402,6 @@ class MetaService:
                                                      4, 2, 4, 2 + len(data), GREEN_COLORIZING, 'NUMBER_LESS', '57')
         # Descriptions len rules
         sheets.add_colorizing_conditional_formatting(self.google_document_out_id, name_of_sheet,
-                                                     6, 2, 6, 2 + len(data), RED_COLORIZING, 'NUMBER_GREATER', '155')
+                                                     7, 2, 7, 2 + len(data), RED_COLORIZING, 'NUMBER_GREATER', '155')
         sheets.add_colorizing_conditional_formatting(self.google_document_out_id, name_of_sheet,
-                                                     6, 2, 6, 2 + len(data), GREEN_COLORIZING, 'NUMBER_LESS', '156')
+                                                     7, 2, 7, 2 + len(data), GREEN_COLORIZING, 'NUMBER_LESS', '156')
