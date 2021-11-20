@@ -35,5 +35,4 @@ if os.getenv("GOOGLE_API_TOKEN") is not None:
         f.write(os.getenv("GOOGLE_API_TOKEN"))
 
 service = MetaService(config)
-print(service.get_xml_report('Оцифровка аудиокассет в Минске'))
-# service.make_report(type=OUTPUT_TYPE)
+service.make_report(type=OUTPUT_TYPE)

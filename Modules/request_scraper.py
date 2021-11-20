@@ -33,6 +33,10 @@ class RequestsScraper:
             response = requests.get(url, headers=headers, timeout=40, verify=False)
             logger.info("Status code response " + str(response.status_code))
             if response.status_code == 200:
+                if response.text.find('windows-1251') != -1:
+                    response.encoding = 'cp1251'
+                else:
+                    response.encoding = 'utf-8'
                 return response.text
             sleep(2)
 

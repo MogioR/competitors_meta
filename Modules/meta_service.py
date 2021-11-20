@@ -5,7 +5,6 @@ from datetime import date
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import numpy as np
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from Modules.Logger.logger import get_logger
@@ -56,44 +55,14 @@ class MetaService:
     def __del__(self):
         pass
 
-    # Return xml_report from query
-    def get_xml_report(self, query):
-        errors = ''
-        report = ''
-        for i in range(3):
-            report = self.searchEngine.get_search_results(query)
-            errors = BeautifulSoup(report, 'lxml')
-            if errors.yandexsearch.response.error is not None:
-                pass
-            else:
-                break
+    # Return query items by key
+    def get_content_by_key(self, key: str):
+        try:
+            query_items = self.searchEngine.get_query_items(key)
+        except Exception as e:
+            raise e
 
-        if errors.yandexsearch.response.error is not None:
-            raise Exception('Xml river error: ', errors.yandexsearch.response.error.string)
-        return report
-
-    # Return urls from xml_report
-    @staticmethod
-    def get_content_by_get_xml_report(xml_report):
-        soup = BeautifulSoup(xml_report, "html.parser")
-        docs = soup.findAll('doc')
-
-        query_urls = []
-        query_titles = []
-        query_descriptions = []
-
-        for doc in docs:
-            query_urls.append(doc.url.text)
-            title = doc.title.text.replace('![CDATA[', '')
-            title = title.replace(']]', '')
-            title = title.replace('\xa0', '')
-            query_titles.append(title)
-            desc = doc.passages.passage.text.replace('![CDATA[', '')
-            desc = desc.replace(']]', '')
-            desc = desc.replace('\xa0', '')
-            query_descriptions.append(desc)
-
-        return query_urls, query_titles, query_descriptions
+        return query_items
 
     # Return titles and descriptions from urls
     def get_meta_by_urls(self, urls):
@@ -111,6 +80,8 @@ class MetaService:
                 descriptions.append(result.description)
 
         except Exception as e:
+            titles = ['' for _ in range(len(urls))]
+            descriptions = ['' for _ in range(len(urls))]
             logger.error(e)
 
         return titles, descriptions
@@ -217,70 +188,65 @@ class MetaService:
         print('Обработка')
         export_list = []
         for i, query in enumerate(tqdm(queries)):
-            # Если это не ссылка
+            # It's not url
             if re.search(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$", query) \
                     is None:
                 try:
-                    results = self.get_xml_report(query)
+                    query_items = self.get_content_by_key(query)
                 except Exception as e:
                     print(e)
                     print('Stopped in: ', i, ' Query is ', query)
                     break
 
-                urls, query_titles, query_descriptions = self.get_content_by_get_xml_report(results)
-
                 # Del urls with red_sale
-                urls_new = []
-                query_titles_new = []
-                query_descriptions_new = []
-                for i in range(len(urls)):
-                    if urls[i].find('redsale.by') == -1:
-                        urls_new.append(urls[i])
-                        query_titles_new.append(query_titles[i])
-                        query_descriptions_new.append(query_descriptions[i])
+                urls = []
+                query_titles = []
+                query_descriptions = []
 
-                titles, descriptions = self.get_meta_by_urls(urls_new)
-                if len(urls_new) >= self.min_urls:
-                    export_list.append(self.get_export_query_item(query, urls_new, titles, descriptions,
-                                                                  query_titles_new, query_descriptions_new))
+                for item in query_items:
+                    if item.url.find('redsale.by') == -1:
+                        urls.append(item.url)
+                        query_titles.append(item.title)
+                        query_descriptions.append(item.description)
+
+                titles, descriptions = self.get_meta_by_urls(urls)
+                if len(urls) >= self.min_urls:
+                    export_list.append(self.get_export_query_item(query, urls, titles, descriptions,
+                                                                  query_titles, query_descriptions))
+            # It's url
             else:
                 red_sale_site = self.get_h1_by_url(query)
                 if len(red_sale_site.h1) != 0:
                     red_sale_site.h1 = red_sale_site.h1.strip()
                     try:
-                        results = self.get_xml_report(red_sale_site.h1)
+                        query_items = self.get_content_by_key(red_sale_site.h1)
                     except Exception as e:
                         print(e)
                         print('Stopped in: ', i, ' Query is ', red_sale_site.h1)
                         break
 
-                    urls, query_titles, query_descriptions = self.get_content_by_get_xml_report(results)
-
                     # Del urls with red_sale
-                    redsale_query_title = ''
-                    redsale_query_desc = ''
+                    red_sale_query_title = ''
+                    red_sale_query_desc = ''
+                    urls = []
+                    query_titles = []
+                    query_descriptions = []
+                    for item in query_items:
+                        if item.url.find('redsale.by') == -1:
+                            urls.append(item.url)
+                            query_titles.append(item.title)
+                            query_descriptions.append(item.description)
+                        elif item.url == query:
+                            red_sale_query_title = item.title
+                            red_sale_query_desc = item.description
 
-                    urls_new = []
-                    query_titles_new = []
-                    query_descriptions_new = []
-                    for i in range(len(urls)):
-                        if urls[i].find('redsale.by') == -1:
-                            urls_new.append(urls[i])
-                            query_titles_new.append(query_titles[i])
-                            query_descriptions_new.append(query_descriptions[i])
-                        elif urls[i] == query:
-                            redsale_query_title = query_titles[i]
-                            redsale_query_desc = query_descriptions[i]
-
-                            # redsale_query_title = re.sub(r' –[A-Za-z. ]{0,}$', '', query_titles[i])
-
-                    titles, descriptions = self.get_meta_by_urls(urls_new)
-                    if len(urls_new) >= self.min_urls:
-                        export_list.append(self.get_export_query_item(red_sale_site.h1, urls_new, titles, descriptions,
-                                                                      query_titles_new, query_descriptions_new,
+                    titles, descriptions = self.get_meta_by_urls(urls)
+                    if len(urls) >= self.min_urls:
+                        export_list.append(self.get_export_query_item(red_sale_site.h1, urls, titles, descriptions,
+                                                                      query_titles, query_descriptions,
                                                                       red_sale_site.url, red_sale_site.title,
-                                                                      red_sale_site.description, redsale_query_title,
-                                                                      redsale_query_desc))
+                                                                      red_sale_site.description, red_sale_query_title,
+                                                                      red_sale_query_desc))
                 else:
                     print('Bad url: ', query)
 
@@ -349,44 +315,59 @@ class MetaService:
         data = []
         row = 2
         for query in export_list:
-            all_title_hints_str = self.get_str_hints(query['hint_title'],
-                                                     math.ceil(len(query['urls']) * self.tolerance_hint_title))
-            all_description_hints_str = self.get_str_hints(query['hint_desc'],
-                                                           math.ceil(len(query['urls']) * self.tolerance_hint_desc))
+            # Hints 1+ strings
+            all_title_hints_str = self.get_str_hints(query['hint_title'], 1)
+            all_description_hints_str = self.get_str_hints(query['hint_desc'], 1)
+            all_query_title_hints_str = self.get_str_hints(query['hint_query_title'], 1)
+            all_query_description_hints_str = self.get_str_hints(query['hint_query_desc'], 1)
 
-            all_query_title_hints_str = self.get_str_hints(query['hint_query_title'],
-                                                           math.ceil(len(query['urls']) * self.tolerance_hint_title))
-            all_query_description_hints_str = self.get_str_hints(query['hint_query_desc'],
-                                                           math.ceil(len(query['urls']) * self.tolerance_hint_desc))
-
+            # Unique hints dicts
             title_unique_hints = self.delete_not_unique_hints(query['hint_title'], query['title'])
             desc_unique_hints = self.delete_not_unique_hints(query['hint_desc'], query['description'])
             query_title_unique_hints = self.delete_not_unique_hints(query['hint_query_title'], query['title'])
             query_esc_unique_hints = self.delete_not_unique_hints(query['hint_query_desc'], query['description'])
 
-            title_unique_hints_str = self.get_str_hints(title_unique_hints, self.tolerance_hint_title)
-            desc_unique_hints_str = self.get_str_hints(desc_unique_hints, self.tolerance_hint_desc)
-            query_title_unique_hints_str = self.get_str_hints(query_title_unique_hints, self.tolerance_hint_title)
-            query_desc_unique_hints_str = self.get_str_hints(query_esc_unique_hints, self.tolerance_hint_desc)
+            # Unique hints str
+            title_unique_hints_str = self.get_str_hints(title_unique_hints,
+                                                        math.ceil(len(query['urls']) * self.tolerance_hint_title))
+            desc_unique_hints_str = self.get_str_hints(desc_unique_hints,
+                                                       math.ceil(len(query['urls']) * self.tolerance_hint_desc))
+            query_title_unique_hints_str = self.get_str_hints(query_title_unique_hints,
+                                                              math.ceil(len(query['urls']) * self.tolerance_hint_title))
+            query_desc_unique_hints_str = self.get_str_hints(query_esc_unique_hints,
+                                                             math.ceil(len(query['urls']) * self.tolerance_hint_desc))
 
+            len_title = '=LEN(C' + str(row) + ')'
+            len_desc = '=LEN(F' + str(row) + ')'
             if query['url'] == '':
-                data.append([query['url'], query['query'], query['title'], '=LEN(C' + str(row) + ')',
-                             '', query['description'], '=LEN(F' + str(row) + ')', '',
-                             query_title_unique_hints_str, query_desc_unique_hints_str, title_unique_hints_str,
-                             desc_unique_hints_str, '', '', '', ''])
+                compare_title = ''
+                compare_desc = ''
             else:
-                data.append([query['url'], query['query'], query['title'], '=LEN(C' + str(row) + ')',
-                             str(query['title'] == query['query_title']), query['description'],
-                             '=LEN(F' + str(row) + ')',
-                             str(query['description'][:100] == query['query_description'][:100]),
-                             query_title_unique_hints_str, query_desc_unique_hints_str, title_unique_hints_str,
-                             desc_unique_hints_str, all_query_title_hints_str, all_query_description_hints_str,
-                             all_title_hints_str, all_description_hints_str])
+                if query['query_title'] != '' and query['query_title'].find(query['query_title']) == -1:
+                    compare_title = ' false'
+                elif query['title'].find(query['query_title']) != -1:
+                    compare_title = ' true'
+                else:
+                    compare_title = ' none'
+
+                if (query['query_description'] != '' or query['query_description'] != ' ')\
+                        and query['description'][:100] != query['query_description'][:100]:
+                    compare_desc = ' false'
+                elif query['description'][:100] == query['query_description'][:100]:
+                    compare_desc = ' true'
+                else:
+                    compare_desc = ' none'
+
+            data.append([query['url'], query['query'], query['title'], len_title,
+                         compare_title, query['description'], len_desc, compare_desc,
+                         query_title_unique_hints_str, query_desc_unique_hints_str, title_unique_hints_str,
+                         desc_unique_hints_str, all_query_title_hints_str, all_query_description_hints_str,
+                         all_title_hints_str, all_description_hints_str])
             row += 1
         try:
             sheets.create_sheet(self.google_document_out_id, name_of_sheet, 1 + len(data), len(header_new))
             logger.info("Created new sheet with name: " + name_of_sheet)
-        except:
+        except Exception as e:
             logger.info("Sheet " + name_of_sheet + " already created, recreate")
             sheets.delete_sheet(self.google_document_out_id, name_of_sheet)
             sheets.create_sheet(self.google_document_out_id, name_of_sheet, 1 + len(data), len(header_new))
