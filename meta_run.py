@@ -1,10 +1,12 @@
 import os
 import json
 from Modules.meta_service import MetaService
+from api_objects.container import BaseContainer
 
 CONFIG_FILE_PATH = 'Environment/config.json'
-# FILE/GOOGLE
-OUTPUT_TYPE = 'GOOGLE'    # FILE - импорт из файла в папке, GOOGLE - импорт из Google Sheets
+# FILE/GOOGLE/BASE_CONTAINER
+# FILE - импорт из файла в папке, GOOGLE - импорт из Google Sheets, BASE_CONTAINER - из base_container.pickle
+OUTPUT_TYPE = 'BASE_CONTAINER'
 GOOGLE_SHEETS_IN = '1Ad1Az4pfaiaFwVix6btz2bQaJdlfDLzDJhrnCFB7qZg'   # Файл откуда берем инфу
 GOOGLE_SHEETS_OUT = '129cmECaDj0FlNif52_0QtTJogbLzDYSv_JeS2Wk5XyM'  # Файл, куда заливаем инфу
 SEARCH_ENGINE = 'GOOGLE'   # GOOGLE - гугл, YANDEX - яндекс
@@ -33,6 +35,15 @@ config['XMLRiver']['Yandex']['default_device'] = SEARCH_DEVICE.lower()
 if os.getenv("GOOGLE_API_TOKEN") is not None:
     with open(config['GoogleSheets']['token'], 'w') as f:
         f.write(os.getenv("GOOGLE_API_TOKEN"))
+
+if OUTPUT_TYPE == 'BASE_CONTAINER':
+    base_container = BaseContainer()
+    base_container.load()
+    base_containers = base_container.get_containers(None, False)
+
+    with open(config['Main']['default_input_file'], 'w') as f:
+        for container in base_containers:
+            f.write(container.domain + container.path+'\n')
 
 service = MetaService(config)
 service.make_report(type=OUTPUT_TYPE)

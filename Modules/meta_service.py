@@ -174,7 +174,7 @@ class MetaService:
     def make_report(self, type='GOOGLE'):
         print('Получение списка для обработки')
 
-        if type == 'FILE':
+        if type == 'FILE' or type == 'BASE_CONTAINER':
             with open(self.file_in, 'r', encoding='utf-8-sig') as f:
                 data = f.read()
             queries = data.split('\n')
@@ -345,15 +345,15 @@ class MetaService:
             else:
                 if query['query_title'] != '' and query['query_title'].find(query['query_title']) == -1:
                     compare_title = ' false'
-                elif query['title'].find(query['query_title']) != -1:
+                elif query['query_title'] != '':
                     compare_title = ' true'
                 else:
                     compare_title = ' none'
 
-                if (query['query_description'] != '' or query['query_description'] != ' ')\
+                if (query['query_description'] != '' and query['query_description'] != ' ')\
                         and query['description'][:100] != query['query_description'][:100]:
                     compare_desc = ' false'
-                elif query['description'][:100] == query['query_description'][:100]:
+                elif query['query_description'] != '' and query['query_description'] != ' ':
                     compare_desc = ' true'
                 else:
                     compare_desc = ' none'
