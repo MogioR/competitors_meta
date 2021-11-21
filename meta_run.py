@@ -6,7 +6,7 @@ from api_objects.container import BaseContainer
 CONFIG_FILE_PATH = 'Environment/config.json'
 # FILE/GOOGLE/BASE_CONTAINER
 # FILE - импорт из файла в папке, GOOGLE - импорт из Google Sheets, BASE_CONTAINER - из base_container.pickle
-OUTPUT_TYPE = 'BASE_CONTAINER'
+OUTPUT_TYPE = 'GOOGLE'
 GOOGLE_SHEETS_IN = '1Ad1Az4pfaiaFwVix6btz2bQaJdlfDLzDJhrnCFB7qZg'   # Файл откуда берем инфу
 GOOGLE_SHEETS_OUT = '129cmECaDj0FlNif52_0QtTJogbLzDYSv_JeS2Wk5XyM'  # Файл, куда заливаем инфу
 SEARCH_ENGINE = 'GOOGLE'   # GOOGLE - гугл, YANDEX - яндекс
@@ -36,14 +36,12 @@ if os.getenv("GOOGLE_API_TOKEN") is not None:
     with open(config['GoogleSheets']['token'], 'w') as f:
         f.write(os.getenv("GOOGLE_API_TOKEN"))
 
+
+service = MetaService(config)
 if OUTPUT_TYPE == 'BASE_CONTAINER':
     base_container = BaseContainer()
     base_container.load()
     base_containers = base_container.get_containers(None, False)
-
-    with open(config['Main']['default_input_file'], 'w') as f:
-        for container in base_containers:
-            f.write(container.domain + container.path+'\n')
-
-service = MetaService(config)
-service.make_report(type=OUTPUT_TYPE)
+    service.make_report_by_containers(base_containers)
+else:
+    service.make_report_by_list(type=OUTPUT_TYPE)

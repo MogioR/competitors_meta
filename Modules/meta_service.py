@@ -170,11 +170,11 @@ class MetaService:
     def get_h1_by_url(self, url):
         return self.parser.get_page_details(url)
 
-    # Make report
-    def make_report(self, type='GOOGLE'):
+    # Make report by list
+    def make_report_by_list(self, type='GOOGLE'):
         print('Получение списка для обработки')
 
-        if type == 'FILE' or type == 'BASE_CONTAINER':
+        if type == 'FILE':
             with open(self.file_in, 'r', encoding='utf-8-sig') as f:
                 data = f.read()
             queries = data.split('\n')
@@ -249,6 +249,56 @@ class MetaService:
                                                                       red_sale_query_desc))
                 else:
                     print('Bad url: ', query)
+
+        print('Отчет в файл ' + self.file_out)
+        self.report_to_file(self.file_out, export_list)
+        print('Отчет в гугл документ')
+        self.report_to_google_sheets(export_list)
+
+    # Make report by containers
+    def make_report_by_containers(self, containers):
+        print('Получение списка для обработки')
+
+        queries = []
+        for container in containers:
+            query = list()
+            query.append(container.name)                        # H1
+            query.append(container.domain + container.path)     # Url
+            query.append(container.title)                       # Title
+            query.append(container.description)                 # Description
+            queries.append(query)
+
+        print('Обработка')
+        export_list = []
+        for i, query in enumerate(tqdm(queries)):
+            # Get search results
+            try:
+                query_items = self.get_content_by_key(query[0])
+            except Exception as e:
+                print(e)
+                print('Stopped in: ', i, ' Query is ', query[0])
+                break
+
+            # Del urls with red_sale
+            query_title = ''
+            query_desc = ''
+            urls = []
+            query_titles = []
+            query_descriptions = []
+            for item in query_items:
+                if item.url.find('redsale.by') == -1:
+                    urls.append(item.url)
+                    query_titles.append(item.title)
+                    query_descriptions.append(item.description)
+                elif item.url == query[1]:
+                    query_title = item.title
+                    query_desc = item.description
+
+            titles, descriptions = self.get_meta_by_urls(urls)
+            if len(urls) >= self.min_urls:
+                export_list.append(self.get_export_query_item(query[0], urls, titles, descriptions,
+                                                              query_titles, query_descriptions,
+                                                              query[1], query[2], query[3], query_title, query_desc))
 
         print('Отчет в файл ' + self.file_out)
         self.report_to_file(self.file_out, export_list)
