@@ -153,3 +153,4 @@ fabric.properties
 *.picle
 *.json
 *.txt
+/api_objects/base_container.pickle

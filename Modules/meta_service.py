@@ -374,8 +374,17 @@ class MetaService:
             # Unique hints dicts
             title_unique_hints = self.delete_not_unique_hints(query['hint_title'], query['title'])
             desc_unique_hints = self.delete_not_unique_hints(query['hint_desc'], query['description'])
-            query_title_unique_hints = self.delete_not_unique_hints(query['hint_query_title'], query['title'])
-            query_esc_unique_hints = self.delete_not_unique_hints(query['hint_query_desc'], query['description'])
+
+            # if query_info is empty use originals
+            if query['query_title'] != '' and query['query_title'] != ' ':
+                query_title_unique_hints = self.delete_not_unique_hints(query['hint_query_title'], query['title'])
+            else:
+                query_title_unique_hints = title_unique_hints
+
+            if query['query_description'] != '' and query['query_description'] != ' ':
+                query_esc_unique_hints = self.delete_not_unique_hints(query['hint_query_desc'], query['description'])
+            else:
+                query_esc_unique_hints = desc_unique_hints
 
             # Unique hints str
             title_unique_hints_str = self.get_str_hints(title_unique_hints,

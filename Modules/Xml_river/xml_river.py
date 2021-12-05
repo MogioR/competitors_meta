@@ -22,7 +22,7 @@ class XmlRiver:
             report = requests.get(self.get_request(keys), timeout=60).text
             errors = BeautifulSoup(report, 'lxml')
             if errors.yandexsearch.response.error is not None:
-                logger.warn('XMLRiver response error: ' + errors.yandexsearch.response.error,
+                logger.warn('XMLRiver response error: ' + str(errors.yandexsearch.response.error.string) +
                             ' try make request again.')
             else:
                 break
