@@ -8,7 +8,7 @@ CONFIG_FILE_PATH = 'Environment/config.json'
 # FILE - импорт из файла в папке, GOOGLE - импорт из Google Sheets, BASE_CONTAINER - из base_container.pickle
 OUTPUT_TYPE = 'GOOGLE'
 GOOGLE_SHEETS_IN = '1Ad1Az4pfaiaFwVix6btz2bQaJdlfDLzDJhrnCFB7qZg'   # Файл откуда берем инфу
-GOOGLE_SHEETS_OUT = '129cmECaDj0FlNif52_0QtTJogbLzDYSv_JeS2Wk5XyM'  # Файл, куда заливаем инфу
+GOOGLE_SHEETS_OUT = '18CSD7sNaJWQ4DDOv6omd0J2jSYuT7xjlKCyAxSdz-QQ'  # Файл, куда заливаем инфу
 SEARCH_ENGINE = 'GOOGLE'   # GOOGLE - гугл, YANDEX - яндекс
 SEARCH_REGION = 'MINSK'    # MINSK - Минск, MOSCOW - Москва, KIEV - Киев
 SEARCH_DEVICE = 'MOBILE'   # MOBILE - телефон, DESKTOP - компьютер, TABLET - планшет

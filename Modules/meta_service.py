@@ -4,7 +4,9 @@ import json
 from datetime import date
 from concurrent.futures.thread import ThreadPoolExecutor
 
+
 import numpy as np
+from multiprocessing_logging import install_mp_handler
 from tqdm import tqdm
 
 from Modules.Logger.logger import get_logger
@@ -15,6 +17,7 @@ from Modules.google_sheets_api import GoogleSheetsApi
 from Modules.request_scraper import RequestsScraper
 
 logger = get_logger(__name__)
+install_mp_handler()
 
 # Maximum url in query
 BROWSER_POOL_SIZE = 10
