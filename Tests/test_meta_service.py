@@ -1,11 +1,12 @@
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from Modules.meta_service import MetaService
 from Modules.Xml_river import GoogleXmlRiver
 from Modules.Xml_river import YandexXmlRiver
-from Modules.natasha_tokenizer import NatashaTokenizer
+from Modules.Tokenizer.tokenizer import Tokenizer
 from Modules.request_scraper import RequestsScraper
 
 CONFIGS = [
@@ -115,7 +116,7 @@ def test_competitors_meta_service():
         assert type(service.google_in_sheet) is str
         assert service.google_in_sheet == config['GoogleSheets']['input_sheet_name']
 
-        assert type(service.tokenizer) is NatashaTokenizer
+        assert type(service.tokenizer) is Tokenizer
         assert type(service.parser) is RequestsScraper
 
         del service

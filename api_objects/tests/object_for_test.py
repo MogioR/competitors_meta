@@ -1,9 +1,9 @@
 from api_objects.container import BaseContainer
 from mock import patch
 from api_objects.order import BaseOrder
-from api_objects import base_skill
+from api_objects.skill import BaseSkill, base_skill
 
-from api_objects import BaseWorker
+from api_objects.worker import BaseWorker
 from api_objects.feedback import BaseFeedback
 
 DATA_SKILLS = [

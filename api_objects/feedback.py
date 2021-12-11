@@ -1,10 +1,11 @@
 from collections import defaultdict
-from typing import DefaultDict, List, Set
+from typing import DefaultDict, Dict, List, Set
 
 from utils.tokens import Tokens
 
 from .api import ApiBase, BaseElement
 from .skill import Skill, base_skill
+from .utils import reversed_dict_values
 
 __all__ = ["BaseFeedback", "Feedback"]
 
@@ -34,6 +35,9 @@ class BaseFeedback(ApiBase):
 		super().__init__(name = name)
 		self.worker_ids = defaultdict(set)
 		self.skill_feedbacks:DefaultDict[Skill, Set[Feedback]] = defaultdict(set)
+
+	def get_feedback_skill(self) -> Dict[Feedback, Skill]:
+		return reversed_dict_values(self.skill_feedbacks)
 
 	def get_feedbacks(self, skill:Skill) -> Set[Feedback]:
 		return self.skill_feedbacks[skill]

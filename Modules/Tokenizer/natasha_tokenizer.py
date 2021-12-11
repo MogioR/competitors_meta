@@ -1,4 +1,4 @@
-from Modules.tokenizer import Tokenizer
+from Modules.Tokenizer.tokenizer import Tokenizer
 from natasha import Segmenter, MorphVocab, NewsEmbedding, NewsMorphTagger, NewsNERTagger, Doc
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -10,6 +10,7 @@ ALPHABET = ["а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й", "�
             "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
             "r", "s", "t", "u", "v", "w", "x", "y", "z"]
 ALPHABET = list(map(lambda x: x.upper(), ALPHABET)) + ALPHABET
+
 
 class NatashaTokenizer(Tokenizer):
     def __init__(self):

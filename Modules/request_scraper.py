@@ -53,10 +53,16 @@ class RequestsScraper:
             logger.error(str(e))
             return WebpageDetails('', '', url, '')
 
-        # Get h1
+        # Get h1 red_sale
+        # old red_sale
         h1 = soup.find('h1', {'class': 'page-title-big'})
         if h1 is None:
-            h1_str = ''
+            # new red_sale
+            h1 = soup.find('h1', {'class': 'top__title'})
+            if h1 is None:
+                h1_str = ''
+            else:
+                h1_str = h1.string
         else:
             h1_str = h1.string
 

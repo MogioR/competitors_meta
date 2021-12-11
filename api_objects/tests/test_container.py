@@ -1,4 +1,4 @@
-from api_objects.container import Container
+from api_objects.container import Container, extract_name_geo, PREDLOGS
 
 from object_for_test import DATA_CONTAINERS, base_container
 
@@ -41,5 +41,14 @@ def test_collect_container():
         assert not check_container.location in base_container.index_locations
         assert check_container.location.district_id or check_container.location.metro_id
     
+def test_extract_name_geo():
+    assert extract_name_geo('репетитор в городе Минске', 'Минск', PREDLOGS) == ('репетитор', 'в городе Минске')
+    assert extract_name_geo('репетитор Минска', 'Минск', PREDLOGS) == ('репетитор', 'Минска')
+    assert extract_name_geo('репетитор в посёлке Москва', 'Минск', PREDLOGS) == ('репетитор', 'в посёлке Москва')
+    assert extract_name_geo('репетитор в д. Москва', 'Минск', PREDLOGS) == ('репетитор', 'в д. Москва')
+    assert extract_name_geo('репетитор д. Москва', 'Минск', PREDLOGS) == ('репетитор', 'д. Москва')
+    assert extract_name_geo('репетитор м. Москва', 'Минск', PREDLOGS) == ('репетитор', 'м. Москва')
+
 if __name__ == '__main__':
-    test_collect_container()
+    #test_collect_container()
+    test_extract_name_geo()

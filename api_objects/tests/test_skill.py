@@ -1,3 +1,4 @@
+from api_objects.skill import Skill
 from object_for_test import base_skill, DATA_SKILLS
 
 def test_skill():
