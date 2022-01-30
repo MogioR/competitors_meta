@@ -26,7 +26,10 @@ RIVER_THREADS = 8
 RED_COLORIZING = [230 / 255, 184 / 255, 175 / 255]
 GREEN_COLORIZING = [217 / 255, 234 / 255, 211 / 255]
 
-DEBUG = os.environ['DEBUG']
+if os.environ['DEBUG'] is not None:
+    DEBUG = os.environ['DEBUG']
+else:
+    DEBUG = 'FALSE'
 
 
 class MetaService:
@@ -43,8 +46,8 @@ class MetaService:
             raise Exception('Incorrect default_search_engine, use Google or Yandex')
         self.searchEngine.set_region(config['Main']['default_region'])
 
-        self.tolerance_hint_title = config['Main']['default_title_tolerance_hint']
-        self.tolerance_hint_desc = config['Main']['default_description_tolerance_hint']
+        self.tolerance_hint_title = float(config['Main']['default_title_tolerance_hint'])
+        self.tolerance_hint_desc = float(config['Main']['default_description_tolerance_hint'])
         self.min_urls = config['Main']['default_minimum_urls']
 
         self.file_in = config['Main']['default_input_file']
@@ -317,19 +320,6 @@ class MetaService:
         hints = {key: int(val) for key, val in hints.items() if val > tolerance}
         return ', '.join(hints.keys())
 
-    # Get average len of items urls_items[key] without zero elements
-    @staticmethod
-    def get_average_len(urls_items, key: str):
-        all_len = 0.0
-        cont = 0
-        for url in urls_items:
-            len_ = len(url[key])
-            if len_ != 0:
-                cont += 1
-                all_len += len_
-
-        return all_len / cont
-
     # Return hints without repeat with string
     def delete_not_unique_hints(self, hints: dict, string: str):
         not_unique_hints = self.get_hints(string)
@@ -349,7 +339,9 @@ class MetaService:
     def report_to_drive(self, export_list):
         drive = GoogleDriveApi(self.google_token)
         self.report_to_file(self.file_out, export_list)
-        drive.upload_file(self.file_out, self.drive_folder)
+        current_date = str(date.today()).split('-')
+        name_of_file = current_date[2] + '/' + current_date[1]+'/'+current_date[0]
+        drive.upload_file(self.file_out, self.drive_folder, name_of_file)
 
     # Export report to google sheets
     def report_to_google_sheets(self, export_list):
@@ -367,8 +359,8 @@ class MetaService:
             'description',
             'desc_len',
             'compare_disc',
-            'query_title_hints',
-            'query_desc_hints',
+            'подсказка title',
+            'подсказка desc',
             'all_query_title_hints',
             'all_query_desc_hints'
         ]
